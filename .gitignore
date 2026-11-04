@@ -6,6 +6,7 @@ dist/
 build/
 output/
 uploads/
+public/static/style.css
 
 # Environment variables
 .env

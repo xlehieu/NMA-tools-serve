@@ -1,0 +1,103 @@
+{% extends "layouts/base.njk" %}
+
+{% block title %}{{ title }} · File Tools{% endblock %}
+
+{% block content %}
+  <div class="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-accent">DOCUMENT WORKBENCH</div>
+  <h1 class="mb-2 text-2xl font-bold md:text-3xl">Chuyển đổi DOCX sang PDF</h1>
+  <p class="mb-7 text-sm leading-6 text-muted">Chọn tối đa 50 file .docx để chuyển đổi bằng LibreOffice.</p>
+
+  {% if errorMessage %}
+    <div class="mb-5 rounded-lg border border-err/30 bg-err/10 px-4 py-3 text-sm text-err" role="alert">
+      {{ errorMessage }}
+    </div>
+  {% endif %}
+
+  <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
+    <label id="dropzone" for="fileInput"
+      class="flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-line bg-white/[0.02] px-5 py-9 text-center transition hover:border-accent">
+      <svg class="mb-3 opacity-80" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+        <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="text-sm font-semibold">Kéo file .docx vào đây, hoặc bấm để chọn</span>
+      <span class="mt-1 text-xs text-muted">Hỗ trợ chọn nhiều file cùng lúc (tối đa 50 file)</span>
+    </label>
+    <input id="fileInput" class="sr-only" type="file" name="files" accept=".docx" multiple />
+    <div id="fileList" class="mt-4 flex flex-col gap-2" aria-live="polite"></div>
+
+    <div class="mt-5">
+      <label class="mb-2 block text-xs text-muted" for="outputDir">Thư mục lưu PDF</label>
+      <input id="outputDir" class="w-full rounded-lg border border-line bg-panel px-3 py-3 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
+        type="text" name="outputDir" placeholder="Ví dụ: /Users/tenban/Documents/PDF" autocomplete="off" />
+    </div>
+
+    <button id="submitBtn" type="submit" disabled
+      class="mt-5 inline-flex w-full items-center justify-center rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-accent-ink transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50">
+      Convert sang PDF
+    </button>
+    <div id="loading" class="mt-4 hidden items-center gap-3 text-sm text-muted" role="status">
+      <span class="size-4 animate-spin rounded-full border-2 border-line border-t-accent"></span>
+      <span>Đang convert, vui lòng chờ...</span>
+    </div>
+  </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const input = document.getElementById('fileInput');
+  const dropzone = document.getElementById('dropzone');
+  const fileList = document.getElementById('fileList');
+  const submitBtn = document.getElementById('submitBtn');
+  const form = document.getElementById('uploadForm');
+  const loading = document.getElementById('loading');
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function renderFiles(files) {
+    fileList.replaceChildren();
+    submitBtn.disabled = files.length === 0;
+    [...files].forEach((file) => {
+      const row = document.createElement('div');
+      const name = document.createElement('span');
+      const size = document.createElement('span');
+      row.className = 'flex items-center justify-between gap-3 rounded-lg border border-line bg-panel px-3 py-2 text-sm';
+      name.className = 'min-w-0 truncate';
+      name.textContent = file.name;
+      size.className = 'shrink-0 text-xs text-muted';
+      size.textContent = formatSize(file.size);
+      row.append(name, size);
+      fileList.appendChild(row);
+    });
+  }
+
+  input.addEventListener('change', () => renderFiles(input.files));
+
+  ['dragenter', 'dragover'].forEach((eventName) => {
+    dropzone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      dropzone.classList.add('border-accent', 'bg-accent/10');
+    });
+  });
+  ['dragleave', 'drop'].forEach((eventName) => {
+    dropzone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      dropzone.classList.remove('border-accent', 'bg-accent/10');
+    });
+  });
+  dropzone.addEventListener('drop', (event) => {
+    input.files = event.dataTransfer.files;
+    renderFiles(input.files);
+  });
+
+  form.addEventListener('submit', () => {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Đang convert...';
+    loading.classList.replace('hidden', 'flex');
+  });
+</script>
+{% endblock %}

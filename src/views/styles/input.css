@@ -1,0 +1,16 @@
+@import "tailwindcss";
+@source "../**/*.njk";
+
+@theme {
+  --color-bg: #0b1117;
+  --color-card: #121b24;
+  --color-panel: #17232e;
+  --color-line: #2a3a48;
+  --color-fg: #edf4f5;
+  --color-muted: #91a4ad;
+  --color-accent: #4fd1c5;
+  --color-accent-hover: #78e0d4;
+  --color-accent-ink: #062522;
+  --color-ok: #3ecf8e;
+  --color-err: #ff6b6b;
+}

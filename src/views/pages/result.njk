@@ -1,0 +1,39 @@
+{% extends "layouts/base.njk" %}
+
+{% block title %}{{ title }} · File Tools{% endblock %}
+
+{% block content %}
+  <div class="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-accent">PROCESS COMPLETE</div>
+  <h1 class="mb-2 text-2xl font-bold md:text-3xl">Kết quả xử lý</h1>
+  <p class="text-sm text-muted">{{ successCount }}/{{ items.length }} file xử lý thành công</p>
+
+  {% if savedPath %}
+    <div class="mt-5 break-all rounded-lg border border-ok/30 bg-ok/10 px-4 py-3 text-sm text-ok">
+      Đã lưu PDF vào: <code class="text-fg">{{ savedPath }}</code>
+    </div>
+  {% endif %}
+
+  <div class="my-6 flex flex-col gap-2">
+    {% for item in items %}
+      <div class="flex items-center justify-between gap-4 rounded-lg border border-line bg-panel px-4 py-3 text-sm">
+        <div class="flex min-w-0 items-center gap-3">
+          <span class="size-2 shrink-0 rounded-full {{ 'bg-ok' if item.success else 'bg-err' }}"></span>
+          <span class="truncate">{{ item.name }}</span>
+        </div>
+        <div class="flex shrink-0 items-center gap-4">
+          {% if item.success %}
+            <span class="text-xs font-semibold text-ok">Thành công</span>
+          {% else %}
+            <span class="text-xs font-semibold text-err" title="{{ item.error }}">Lỗi</span>
+          {% endif %}
+          {% if item.downloadUrl %}
+            <a class="text-xs font-semibold text-accent hover:underline" href="{{ item.downloadUrl }}" download>Tải PDF</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <a class="inline-flex w-full items-center justify-center rounded-lg border border-line px-5 py-3 text-sm font-semibold text-fg transition hover:bg-panel"
+    href="/">Xử lý file khác</a>
+{% endblock %}

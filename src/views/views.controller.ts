@@ -19,8 +19,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ConvertService } from '../convert/convert.service';
 import { PdfService } from '../convert/pdf.service';
-import { renderUploadPage } from './templates/upload-page';
-import { renderResultPage } from './templates/result-page';
 
 const UPLOAD_ROOT = path.join(process.cwd(), 'uploads');
 const OUTPUT_ROOT = path.join(process.cwd(), 'output');
@@ -34,7 +32,17 @@ export class ViewsController {
 
   @Get()
   index(@Res() res: Response) {
-    res.type('html').send(renderUploadPage());
+    return res.render('pages/convert.njk', { title: 'Convert DOCX sang PDF' });
+  }
+
+  @Get('pdf/convert')
+  convertPage(@Res() res: Response) {
+    return res.render('pages/convert.njk', { title: 'Convert DOCX sang PDF' });
+  }
+
+  @Get('pdf/copy-protected')
+  copyProtectedPage(@Res() res: Response) {
+    return res.render('pages/copy-protected.njk', { title: 'Copy protected PDF' });
   }
 
   @Post('upload')
@@ -69,7 +77,10 @@ export class ViewsController {
     @Res() res: Response,
   ) {
     if (!files || files.length === 0) {
-      return res.type('html').send(renderUploadPage('Bạn chưa chọn file .docx nào.'));
+      return res.render('pages/convert.njk', {
+        title: 'Convert DOCX sang PDF',
+        errorMessage: 'Bạn chưa chọn file .docx nào.',
+      });
     }
 
     const sessionId = path.basename(path.dirname(files[0].path));
@@ -88,9 +99,10 @@ export class ViewsController {
         targetDir,
       );
     } catch (err: any) {
-      return res
-        .type('html')
-        .send(renderUploadPage(`Không thể lưu vào đường dẫn "${customOutputDir}": ${err.message}`));
+      return res.render('pages/convert.njk', {
+        title: 'Convert DOCX sang PDF',
+        errorMessage: `Không thể lưu vào đường dẫn "${customOutputDir}": ${err.message}`,
+      });
     }
 
     const viewResults = results.map((r) => ({
@@ -104,7 +116,13 @@ export class ViewsController {
         : null,
     }));
 
-    res.type('html').send(renderResultPage(viewResults, hasCustomPath ? targetDir : null));
+    const successCount = viewResults.filter((item) => item.success).length;
+    return res.render('pages/result.njk', {
+      title: 'Kết quả convert',
+      items: viewResults,
+      successCount,
+      savedPath: hasCustomPath ? targetDir : null,
+    });
   }
 
   @Post('copy-pdf')
@@ -139,19 +157,29 @@ export class ViewsController {
     @Res() res: Response,
   ) {
     if (!file) {
-      return res.type('html').send(renderUploadPage('Bạn chưa chọn file PDF.'));
+      return res.render('pages/copy-protected.njk', {
+        title: 'Copy protected PDF',
+        errorMessage: 'Bạn chưa chọn file PDF.',
+      });
     }
 
     try {
       const result = await this.pdfService.copyProtectedPdf(file.path, password, customOutputDir);
       const downloadUrl = `/download-file?path=${encodeURIComponent(result.output)}`;
       return res
-        .type('html')
-        .send(renderResultPage([
-          { name: path.basename(file.path), success: true, downloadUrl },
-        ], result.output));
+        .render('pages/result.njk', {
+          title: 'Kết quả sao chép PDF',
+          items: [
+            { name: path.basename(file.path), success: true, downloadUrl },
+          ],
+          successCount: 1,
+          savedPath: result.output,
+        });
     } catch (err: any) {
-      return res.type('html').send(renderUploadPage(`Không thể sao chép PDF: ${err.message}`));
+      return res.render('pages/copy-protected.njk', {
+        title: 'Copy protected PDF',
+        errorMessage: `Không thể sao chép PDF: ${err.message}`,
+      });
     }
   }
 
