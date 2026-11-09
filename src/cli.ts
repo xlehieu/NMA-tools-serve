@@ -1,9 +1,9 @@
-import 'reflect-metadata';
-import { NestFactory } from '@nestjs/core';
-import * as path from 'path';
-import * as fs from 'fs';
-import { AppModule } from './app.module';
-import { ConvertService } from './convert/convert.service';
+import "reflect-metadata";
+import { NestFactory } from "@nestjs/core";
+import * as path from "path";
+import * as fs from "fs";
+import { AppModule } from "./app.module";
+import { ConvertService } from "./modules/pdf/convert.service";
 
 /**
  * Dùng cho tool cá nhân, không cần chạy server HTTP.
@@ -18,10 +18,12 @@ import { ConvertService } from './convert/convert.service';
  */
 async function main() {
   const inputDir = process.argv[2];
-  const outputDir = process.argv[3] || './output';
+  const outputDir = process.argv[3] || "./output";
 
   if (!inputDir) {
-    console.error('Cách dùng: ts-node src/cli.ts <thư_mục_chứa_docx> [thư_mục_xuất_pdf]');
+    console.error(
+      "Cách dùng: ts-node src/cli.ts <thư_mục_chứa_docx> [thư_mục_xuất_pdf]",
+    );
     process.exit(1);
   }
 
@@ -32,15 +34,17 @@ async function main() {
 
   const files = fs
     .readdirSync(inputDir)
-    .filter((f) => f.toLowerCase().endsWith('.docx'))
+    .filter((f) => f.toLowerCase().endsWith(".docx"))
     .map((f) => path.join(inputDir, f));
 
   if (files.length === 0) {
-    console.log('Không tìm thấy file .docx nào trong thư mục.');
+    console.log("Không tìm thấy file .docx nào trong thư mục.");
     return;
   }
 
-  console.log(`Tìm thấy ${files.length} file .docx. Bắt đầu convert sang PDF...`);
+  console.log(
+    `Tìm thấy ${files.length} file .docx. Bắt đầu convert sang PDF...`,
+  );
 
   const appContext = await NestFactory.createApplicationContext(AppModule);
   const convertService = appContext.get(ConvertService);
@@ -50,7 +54,9 @@ async function main() {
   const okList = results.filter((r) => r.success);
   const failList = results.filter((r) => !r.success);
 
-  console.log(`\nHoàn tất: ${okList.length}/${results.length} file thành công.`);
+  console.log(
+    `\nHoàn tất: ${okList.length}/${results.length} file thành công.`,
+  );
   okList.forEach((r) => console.log(`  ✔ ${r.input} -> ${r.output}`));
 
   if (failList.length > 0) {
@@ -62,6 +68,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('Lỗi:', err);
+  console.error("Lỗi:", err);
   process.exit(1);
 });

@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
-import { ViewsController } from './views.controller';
-import { ConvertModule } from '../convert/convert.module';
+import { Module } from "@nestjs/common";
+import { ViewsController } from "./views.controller";
+import { ConvertModule } from "../modules/pdf/convert.module";
 
 @Module({
   imports: [ConvertModule],
