@@ -1,106 +1,76 @@
-# docx2pdf-nest
+# NMA Serve Tools
 
-Tool cá nhân dùng NestJS để convert hàng loạt file `.docx` sang `.pdf`.
-Convert thật sự được thực hiện bởi **LibreOffice** (chạy headless), Node chỉ điều phối.
+NMA Serve Tools là bộ công cụ hỗ trợ giáo viên xử lý hồ sơ và chuẩn bị tệp để nhập vào hệ thống Cơ sở dữ liệu (CSDL) giáo dục. Dự án hướng đến việc giảm thời gian dành cho các thao tác lặp lại khi chuẩn bị tệp theo yêu cầu của hệ thống.
 
-## Yêu cầu
-- Node.js >= 18
-- Đã cài **LibreOffice** trên máy (có lệnh `soffice` trong PATH)
-  - Windows: cài LibreOffice, thêm `C:\Program Files\LibreOffice\program` vào PATH
-  - Mac: `brew install --cask libreoffice`
-  - Linux: `sudo apt install libreoffice`
+## Công cụ hiện có
 
-## Cài đặt
-```bash
-npm install
-```
+- **Chuyển Word sang PDF hàng loạt.** Chọn tối đa 50 tệp `.docx` mỗi lượt, chuyển đổi bằng LibreOffice rồi tải các tệp PDF kết quả.
+- **Tạo bản sao PDF đã biết mật khẩu.** Tải tệp PDF lên và nhập mật khẩu mở tệp để tạo một bản sao PDF không mã hóa.
 
-## Cách dùng qua UI web (khuyên dùng)
+## Cài đặt trên Windows
 
-Chạy server:
-```bash
-npm run start:dev
-```
+1. Cài **Node.js 22 trở lên** (kèm npm) và **LibreOffice**. Nếu dùng tính năng sao chép PDF có mật khẩu, cài thêm **Python 3** và chọn **Add python.exe to PATH** khi cài.
+2. Tải mã nguồn về máy, giải nén nếu cần rồi mở PowerShell trong thư mục chứa `package.json`. Cài các gói của dự án:
 
-Mở trình duyệt: **http://localhost:3000**
+   ```powershell
+   npm.cmd ci
+   ```
 
-- Kéo thả hoặc chọn nhiều file `.docx` (tối đa 50 file/lượt)
-- Bấm **Convert sang PDF**
-- Trang kết quả hiện danh sách file, file nào lỗi sẽ báo rõ, file nào ok có nút **Tải PDF**
+3. Nếu dùng tính năng sao chép PDF có mật khẩu, cài thư viện Python:
 
-Giao diện là SSR (server render HTML thuần, không cần build frontend riêng), file upload/convert được lưu tạm theo từng phiên trong `uploads/` và `output/` ở thư mục gốc project (có thể xoá định kỳ).
+   ```powershell
+   python -m pip install -r requirements.txt
+   ```
 
-## Cách dùng qua CLI (không cần mở trình duyệt)
+4. Ứng dụng mặc định tìm LibreOffice tại `C:\Program Files\LibreOffice\program\soffice.exe`. Nếu cài ở thư mục khác, đặt `SOFFICE_BIN` theo đường dẫn thực tế trong cùng cửa sổ PowerShell:
 
-Bỏ hết file .docx cần convert vào 1 thư mục, ví dụ `./input`, rồi chạy:
+   ```powershell
+   $env:SOFFICE_BIN = 'D:\LibreOffice\program\soffice.exe'
+   ```
 
-```bash
-npx ts-node src/cli.ts ./input ./output
-```
+   Nếu máy dùng lệnh `py` thay cho `python`, chạy `py -m pip install -r requirements.txt` ở bước 3 và đặt `$env:PYTHON_BIN = 'py'` trước khi khởi động.
 
-- Tham số 1: thư mục chứa các file `.docx` cần convert
-- Tham số 2 (tùy chọn): thư mục lưu file `.pdf` kết quả, mặc định `./output`
+5. Build và chạy ứng dụng:
 
-Kết quả in ra file nào thành công / thất bại.
+   ```powershell
+   npm.cmd run build
+   npm.cmd start
+   ```
 
-## Cách dùng qua REST API (nếu muốn tích hợp/gọi từ chỗ khác)
+## Cài đặt trên macOS
 
-Gọi API:
-```bash
-curl -X POST http://localhost:3000/convert \
-  -H "Content-Type: application/json" \
-  -d '{
-        "files": ["/duong/dan/a.docx", "/duong/dan/b.docx"],
-        "outputDir": "./output"
-      }'
-```
+1. Cài **Node.js 22 trở lên** (kèm npm) và đưa **LibreOffice.app** vào thư mục **Applications**. Cài thêm **Python 3** nếu dùng tính năng sao chép PDF có mật khẩu.
+2. Tải mã nguồn về máy, giải nén nếu cần rồi mở Terminal trong thư mục chứa `package.json`. Cài các gói của dự án:
 
-Response:
-```json
-{
-  "results": [
-    { "input": "...", "output": "...", "success": true },
-    { "input": "...", "output": null, "success": false, "error": "..." }
-  ]
-}
-```
+   ```bash
+   npm ci
+   ```
 
-## Sao chép PDF có mật khẩu
+3. Đặt đường dẫn tới LibreOffice. Nếu đặt ứng dụng ở thư mục khác, sửa đường dẫn cho phù hợp.
 
-Service này dùng Python, thư viện `pypdf` và `cryptography` để mở PDF bằng mật khẩu và ghi nội dung sang
-một file PDF mới (file mới không còn mã hóa). Đường dẫn nhập vào là **thư mục đích**,
-file mới giữ nguyên tên file nguồn. Nếu bỏ trống, file được lưu vào `./output/pdf/copy`.
+   ```bash
+   export SOFFICE_BIN="/Applications/LibreOffice.app/Contents/MacOS/soffice"
+   ```
 
-Cài dependency:
+4. Nếu dùng tính năng sao chép PDF có mật khẩu, tạo môi trường Python riêng cho dự án và cấu hình ứng dụng dùng Python trong môi trường đó:
 
-```powershell
-python -m pip install -r requirements.txt
-```
+   ```bash
+   python3 -m venv .venv
+   .venv/bin/python -m pip install -r requirements.txt
+   export PYTHON_BIN="$PWD/.venv/bin/python"
+   ```
 
-Nếu lệnh Python không có tên `python`, cấu hình đường dẫn Python:
+5. Build và chạy ứng dụng trong cùng cửa sổ Terminal:
 
-```powershell
-$env:PYTHON_BIN = 'C:\Path\to\python.exe'
-```
+   ```bash
+   npm run build
+   npm start
+   ```
 
-Gọi API:
+## Sử dụng
 
-```bash
-curl -X POST http://localhost:3000/pdf/copy \
-  -H "Content-Type: application/json" \
-  -d '{
-        "sourcePath": "C:\\input\\protected.pdf",
-        "password": "mat-khau",
-        "outputDir": "E:\\output\\pdf\\copy"
-      }'
-```
+1. Khi ứng dụng đã chạy, mở [http://localhost:3000](http://localhost:3000) trong trình duyệt.
+2. Trong menu **PDF**, chọn **Convert** để chuyển Word sang PDF hoặc **Copy protected file** để tạo bản sao PDF có mật khẩu.
+3. Chọn tệp cần xử lý. Có thể nhập đường dẫn thư mục đích trên máy đang chạy ứng dụng hoặc để trống và tải tệp từ trang kết quả.
 
-API tự tạo thư mục đích nếu chưa có, không ghi đè file nguồn và không ghi mật khẩu vào log.
-
-## Ghi chú
-- Cả batch (ví dụ 30 file) được convert trong **1 lần gọi soffice** để nhanh và tránh lỗi khóa profile khi
-  chạy nhiều tiến trình LibreOffice song song.
-- Nếu muốn chỉ định đường dẫn `soffice` khác (không có trong PATH), set biến môi trường:
-  ```bash
-  SOFFICE_BIN="/duong/dan/toi/soffice" npx ts-node src/cli.ts ./input ./output
-  ```
+Giữ cửa sổ PowerShell hoặc Terminal mở khi sử dụng. Nhấn `Ctrl+C` để dừng ứng dụng. Khi chạy lại trong cửa sổ mới, đặt lại các biến môi trường đã cấu hình trước khi chạy lệnh start.

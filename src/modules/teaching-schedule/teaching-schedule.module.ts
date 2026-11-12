@@ -5,5 +5,6 @@ import { ExcelModule } from "../excel/excel.module";
 @Module({
   imports: [ExcelModule],
   providers: [ExcelTeachingScheduleService],
+  exports: [ExcelTeachingScheduleService],
 })
 export class TeachingScheduleModule {}

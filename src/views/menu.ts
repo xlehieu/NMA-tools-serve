@@ -9,6 +9,10 @@ export interface MenuGroup {
 
 const MENU: MenuGroup[] = [
   {
+    label: "Excel",
+    children: [{ label: "Lịch báo giảng", path: "/excel/teaching-schedule" }],
+  },
+  {
     label: "PDF",
     children: [
       { label: "Convert", path: "/pdf/convert" },

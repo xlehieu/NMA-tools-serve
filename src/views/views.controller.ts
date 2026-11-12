@@ -12,7 +12,9 @@ import {
   Res,
   UploadedFile,
   UploadedFiles,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileFieldsInterceptor } from "@nestjs/platform-express";
 import type { Response, Request } from "express";
 import * as fs from "fs";
 import * as path from "path";
@@ -23,13 +25,75 @@ import {
 } from "../decorators/file-interceptor.decorator";
 import { ConvertService } from "../modules/pdf/convert.service";
 import { PdfService } from "../modules/pdf/pdf.service";
+import { ExcelTeachingScheduleService } from "../modules/teaching-schedule/excel-teaching-schedule.service";
+import { getOriginalFileName } from "../utils/file.util";
+
 @Controller()
 export class ViewsController {
   private readonly logger = new Logger(ViewsController.name);
   constructor(
     private readonly convertService: ConvertService,
     private readonly pdfService: PdfService,
+    private readonly teachingScheduleService: ExcelTeachingScheduleService,
   ) {}
+
+  @Post("excel/teaching-schedule/subjects")
+  @UseInterceptors(FileFieldsInterceptor([{ name: "currentWeek", maxCount: 1 }], {
+    limits: { fileSize: 10 * 1024 * 1024 },
+  }))
+  getTeachingScheduleSubjects(
+    @UploadedFiles() files: { currentWeek?: Express.Multer.File[] },
+  ) {
+    const file = files?.currentWeek?.[0];
+    if (!file) throw new BadRequestException("Chọn file Excel tuần mới.");
+    return this.teachingScheduleService.getSubjectChoices(file.buffer);
+  }
+
+  @Post("excel/teaching-schedule")
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: "previousWeek", maxCount: 1 },
+    { name: "currentWeek", maxCount: 1 },
+  ], { limits: { fileSize: 10 * 1024 * 1024 } }))
+  updateTeachingSchedule(
+    @UploadedFiles() files: { previousWeek?: Express.Multer.File[]; currentWeek?: Express.Multer.File[] },
+    @Req() req: Request,
+    @Res() res: Response,
+    @Body("subjectMappings") subjectMappings: string,
+  ) {
+    const previous = files?.previousWeek?.[0];
+    const current = files?.currentWeek?.[0];
+
+    try {
+      if (!previous || !current) {
+        throw new BadRequestException("Chọn đủ file Excel tuần cũ và tuần mới.");
+      }
+
+      const currentName = getOriginalFileName(current);
+      const previousExtension = path.extname(getOriginalFileName(previous)).toLowerCase();
+      const extension = path.extname(currentName).toLowerCase();
+      if (
+        ![".xls", ".xlsx"].includes(previousExtension) ||
+        (extension !== ".xls" && extension !== ".xlsx")
+      ) {
+        throw new BadRequestException("Chỉ hỗ trợ file .xls và .xlsx.");
+      }
+
+      const output = this.teachingScheduleService.updatePeriods(
+        previous.buffer,
+        current.buffer,
+        extension === ".xls" ? "xls" : "xlsx",
+        subjectMappings ? JSON.parse(subjectMappings) : {},
+      );
+      return res.attachment(`${path.parse(currentName).name} - PPCT${extension}`).send(output);
+    } catch (error) {
+      if (!(error instanceof BadRequestException) || req.accepts(["html", "json"]) === "json") {
+        throw error;
+      }
+      return res.status(400).render("pages/excel/teaching-schedule.njk", {
+        errorMessage: error.message,
+      });
+    }
+  }
 
   //region convert-doc-to-pdf
   @Post("convert-doc-to-pdf")

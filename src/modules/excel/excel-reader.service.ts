@@ -28,9 +28,7 @@ export class ExcelReaderService {
     }
 
     // 3. Đọc workbook
-    const workbook = XLSX.readFile(filePath, {
-      cellDates: true,
-    });
+    const workbook = this.readWorkbook(fs.readFileSync(filePath));
 
     // 4. Đọc một sheet cụ thể
     if (sheetName) {
@@ -51,6 +49,10 @@ export class ExcelReaderService {
       sheetName: name,
       data: this.convertSheetToJson(workbook.Sheets[name]),
     }));
+  }
+
+  readWorkbook(buffer: Buffer) {
+    return XLSX.read(buffer, { type: "buffer", cellDates: true, cellStyles: true });
   }
 
   /**
