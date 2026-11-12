@@ -3,39 +3,75 @@ import {
   Body,
   Controller,
   Get,
-  Logger,
   NotFoundException,
   Param,
   Post,
   Query,
-  Req,
   Res,
   UploadedFile,
   UploadedFiles,
   UseInterceptors,
 } from "@nestjs/common";
 import { FileFieldsInterceptor } from "@nestjs/platform-express";
-import type { Response, Request } from "express";
+import type { Response } from "express";
 import * as fs from "fs";
 import * as path from "path";
-import { TMP_OUTPUT_ROOT } from "../const/dir";
+import { TMP_OUTPUT_ROOT } from "./const/dir";
 import {
   UploadMultipleFiles,
   UploadSingleFile,
-} from "../decorators/file-interceptor.decorator";
-import { ConvertService } from "../modules/pdf/convert.service";
-import { PdfService } from "../modules/pdf/pdf.service";
-import { ExcelTeachingScheduleService } from "../modules/teaching-schedule/excel-teaching-schedule.service";
-import { getOriginalFileName } from "../utils/file.util";
+} from "./decorators/file-interceptor.decorator";
+import { MonthlyMailService } from "./modules/monthly-mail/monthly-mail.service";
+import { ConvertService } from "./modules/pdf/convert.service";
+import { PdfService } from "./modules/pdf/pdf.service";
+import { ExcelTeachingScheduleService } from "./modules/teaching-schedule/excel-teaching-schedule.service";
+import { getOriginalFileName } from "./utils/file.util";
 
 @Controller()
-export class ViewsController {
-  private readonly logger = new Logger(ViewsController.name);
+export class ApiController {
   constructor(
+    private readonly monthlyMailService: MonthlyMailService,
     private readonly convertService: ConvertService,
     private readonly pdfService: PdfService,
     private readonly teachingScheduleService: ExcelTeachingScheduleService,
   ) {}
+
+  @Post("monthly-mail/columns")
+  @UseInterceptors(FileFieldsInterceptor([{ name: "excel", maxCount: 1 }], {
+    limits: { fileSize: 10 * 1024 * 1024 },
+  }))
+  monthlyMailColumns(@UploadedFiles() files: { excel?: Express.Multer.File[] }) {
+    const excel = files?.excel?.[0];
+    if (!excel || path.extname(excel.originalname).toLowerCase() !== ".xlsx") {
+      throw new BadRequestException("Chọn tệp Excel .xlsx.");
+    }
+    return this.monthlyMailService.inspect(excel.buffer);
+  }
+
+  @Post("monthly-mail")
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: "template", maxCount: 1 },
+    { name: "excel", maxCount: 1 },
+  ], { limits: { fileSize: 10 * 1024 * 1024, fields: 2 } }))
+  async monthlyMail(
+    @UploadedFiles() files: { template?: Express.Multer.File[]; excel?: Express.Multer.File[] },
+    @Body("nameField") nameField: string,
+    @Body("zipName") zipName: string,
+    @Res() res: Response,
+  ) {
+    const template = files?.template?.[0];
+    const excel = files?.excel?.[0];
+    if (!template || path.extname(template.originalname).toLowerCase() !== ".docx" ||
+        !excel || path.extname(excel.originalname).toLowerCase() !== ".xlsx") {
+      throw new BadRequestException("Chọn mẫu Word .docx và tệp Excel .xlsx.");
+    }
+    if (typeof nameField !== "string" || (zipName !== undefined && typeof zipName !== "string")) {
+      throw new BadRequestException("Kiểm tra cột đặt tên PDF và tên tệp ZIP.");
+    }
+    const result = await this.monthlyMailService.generate(template.buffer, excel.buffer, nameField, zipName ?? "");
+    return res.set("Access-Control-Expose-Headers", "Content-Disposition")
+      .attachment(result.filename).send(result.data);
+  }
 
   @Post("excel/teaching-schedule/subjects")
   @UseInterceptors(FileFieldsInterceptor([{ name: "currentWeek", maxCount: 1 }], {
@@ -56,7 +92,6 @@ export class ViewsController {
   ], { limits: { fileSize: 10 * 1024 * 1024 } }))
   updateTeachingSchedule(
     @UploadedFiles() files: { previousWeek?: Express.Multer.File[]; currentWeek?: Express.Multer.File[] },
-    @Req() req: Request,
     @Res() res: Response,
     @Body("subjectMappings") subjectMappings: string,
   ) {
@@ -86,12 +121,7 @@ export class ViewsController {
       );
       return res.attachment(`${path.parse(currentName).name} - PPCT${extension}`).send(output);
     } catch (error) {
-      if (!(error instanceof BadRequestException) || req.accepts(["html", "json"]) === "json") {
-        throw error;
-      }
-      return res.status(400).render("pages/excel/teaching-schedule.njk", {
-        errorMessage: error.message,
-      });
+      throw error;
     }
   }
 
@@ -104,10 +134,7 @@ export class ViewsController {
     @Res() res: Response,
   ) {
     if (!files || files.length === 0) {
-      return res.render("pages/pdf/convert.njk", {
-        title: "Convert DOCX sang PDF",
-        errorMessage: "Bạn chưa chọn file .docx nào.",
-      });
+      return res.status(400).json({ message: "Bạn chưa chọn file .docx nào." });
     }
 
     const sessionId = path.basename(path.dirname(files[0].path));
@@ -126,10 +153,7 @@ export class ViewsController {
         targetDir,
       );
     } catch (err: any) {
-      return res.render("pages/pdf/convert.njk", {
-        title: "Convert DOCX sang PDF",
-        errorMessage: `Không thể lưu vào đường dẫn "${customOutputDir}": ${err.message}`,
-      });
+      return res.status(400).json({ message: `Không thể lưu vào đường dẫn "${customOutputDir}": ${err.message}` });
     }
 
     const viewResults = results.map((r) => ({
@@ -144,12 +168,7 @@ export class ViewsController {
     }));
 
     const successCount = viewResults.filter((item) => item.success).length;
-    return res.render("pages/result.njk", {
-      title: "Kết quả convert",
-      items: viewResults,
-      successCount,
-      savedPath: hasCustomPath ? targetDir : null,
-    });
+    return res.json({ items: viewResults, successCount, savedPath: hasCustomPath ? targetDir : null });
   }
 
   //region copy-protected-pdf
@@ -162,10 +181,7 @@ export class ViewsController {
     @Res() res: Response,
   ) {
     if (!file) {
-      return res.render("pages/pdf/copy-protected.njk", {
-        title: "Copy protected PDF",
-        errorMessage: "Bạn chưa chọn file PDF.",
-      });
+      return res.status(400).json({ message: "Bạn chưa chọn file PDF." });
     }
 
     try {
@@ -175,17 +191,9 @@ export class ViewsController {
         customOutputDir,
       );
       const downloadUrl = `/download-file?path=${encodeURIComponent(result.output)}`;
-      return res.render("pages/result.njk", {
-        title: "Kết quả sao chép PDF",
-        items: [{ name: path.basename(file.path), success: true, downloadUrl }],
-        successCount: 1,
-        savedPath: result.output,
-      });
+      return res.json({ downloadUrl, savedPath: result.output });
     } catch (err: any) {
-      return res.render("pages/pdf/copy-protected.njk", {
-        title: "Copy protected PDF",
-        errorMessage: `Không thể sao chép PDF: ${err.message}`,
-      });
+      return res.status(400).json({ message: `Không thể sao chép PDF: ${err.message}` });
     }
   }
 
@@ -217,17 +225,5 @@ export class ViewsController {
     res.download(filePath, path.basename(filePath));
   }
 
-  @Get("{*path}")
-  renderPage(@Req() req: Request, @Res() res: Response) {
-    const routeName = req.path.replace(/^\/+|\/+$/g, "") || "pdf/convert";
-    const templatePath = `pages/${routeName}.njk`;
-    res.render(templatePath, {}, (err, html) => {
-      if (err) {
-        this.logger.error(err);
-        return res.status(404).render("pages/not-found.njk");
-      }
 
-      return res.send(html);
-    });
-  }
 }

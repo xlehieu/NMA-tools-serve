@@ -1,76 +1,48 @@
 # NMA Serve Tools
 
-NMA Serve Tools là bộ công cụ hỗ trợ giáo viên xử lý hồ sơ và chuẩn bị tệp để nhập vào hệ thống Cơ sở dữ liệu (CSDL) giáo dục. Dự án hướng đến việc giảm thời gian dành cho các thao tác lặp lại khi chuẩn bị tệp theo yêu cầu của hệ thống.
+NMA Serve Tools là bộ công cụ giúp giáo viên xử lý tệp và chuẩn bị dữ liệu cho hệ thống CSDL giáo dục. Backend NestJS nằm trong `backend/` và cung cấp API. Frontend SvelteKit dùng Svelte 5 nằm trong `frontend/`.
+
+## Yêu cầu
+
+- Node.js 22 trở lên
+- LibreOffice để chuyển DOCX sang PDF. Đặt `SOFFICE_BIN` nếu lệnh `soffice` không nằm trong PATH trên macOS/Linux hoặc LibreOffice dùng đường dẫn cài đặt khác trên Windows.
+- Python 3 và các gói trong `backend/requirements.txt` nếu dùng tính năng sao chép PDF có mật khẩu
+
+## Cài đặt
+
+Tại thư mục gốc dự án, cài công cụ chạy chung:
+
+```bash
+npm install
+```
+
+## Chạy frontend và backend
+
+Chỉ cần chạy một lệnh:
+
+```bash
+npm run start:dev
+```
+
+Lệnh này tự cài dependencies cho cả hai phần, sau đó chạy NestJS backend tại `http://localhost:3000` và SvelteKit frontend tại `http://localhost:5173`. Mở địa chỉ frontend trong trình duyệt.
+
+Để build production:
+
+```bash
+npm run build
+```
 
 ## Công cụ hiện có
 
-- **Chuyển Word sang PDF hàng loạt.** Chọn tối đa 50 tệp `.docx` mỗi lượt, chuyển đổi bằng LibreOffice rồi tải các tệp PDF kết quả.
-- **Tạo bản sao PDF đã biết mật khẩu.** Tải tệp PDF lên và nhập mật khẩu mở tệp để tạo một bản sao PDF không mã hóa.
+- **Lịch báo giảng**: tải lịch tuần cũ và tuần mới, chọn đổi tên môn theo danh sách môn của tệp, cập nhật PPCT rồi tải Excel.
+- **Thư tháng**: chọn mẫu Word có trường MERGEFIELD và danh sách Excel, chọn cột đặt tên PDF, rồi tải ZIP. Dùng trang tính đầu tiên với tiêu đề cột ở dòng đầu, tối đa 250 dòng dữ liệu.
+- **Chuyển DOCX sang PDF**: tải tối đa 50 file DOCX, chuyển đổi bằng LibreOffice và tải từng PDF.
+- **Sao chép PDF có mật khẩu**: nhập mật khẩu mở file để tạo bản sao PDF không mã hóa.
 
-## Cài đặt trên Windows
+## Python cho PDF có mật khẩu
 
-1. Cài **Node.js 22 trở lên** (kèm npm) và **LibreOffice**. Nếu dùng tính năng sao chép PDF có mật khẩu, cài thêm **Python 3** và chọn **Add python.exe to PATH** khi cài.
-2. Tải mã nguồn về máy, giải nén nếu cần rồi mở PowerShell trong thư mục chứa `package.json`. Cài các gói của dự án:
+```bash
+python -m pip install -r backend/requirements.txt
+```
 
-   ```powershell
-   npm.cmd ci
-   ```
-
-3. Nếu dùng tính năng sao chép PDF có mật khẩu, cài thư viện Python:
-
-   ```powershell
-   python -m pip install -r requirements.txt
-   ```
-
-4. Ứng dụng mặc định tìm LibreOffice tại `C:\Program Files\LibreOffice\program\soffice.exe`. Nếu cài ở thư mục khác, đặt `SOFFICE_BIN` theo đường dẫn thực tế trong cùng cửa sổ PowerShell:
-
-   ```powershell
-   $env:SOFFICE_BIN = 'D:\LibreOffice\program\soffice.exe'
-   ```
-
-   Nếu máy dùng lệnh `py` thay cho `python`, chạy `py -m pip install -r requirements.txt` ở bước 3 và đặt `$env:PYTHON_BIN = 'py'` trước khi khởi động.
-
-5. Build và chạy ứng dụng:
-
-   ```powershell
-   npm.cmd run build
-   npm.cmd start
-   ```
-
-## Cài đặt trên macOS
-
-1. Cài **Node.js 22 trở lên** (kèm npm) và đưa **LibreOffice.app** vào thư mục **Applications**. Cài thêm **Python 3** nếu dùng tính năng sao chép PDF có mật khẩu.
-2. Tải mã nguồn về máy, giải nén nếu cần rồi mở Terminal trong thư mục chứa `package.json`. Cài các gói của dự án:
-
-   ```bash
-   npm ci
-   ```
-
-3. Đặt đường dẫn tới LibreOffice. Nếu đặt ứng dụng ở thư mục khác, sửa đường dẫn cho phù hợp.
-
-   ```bash
-   export SOFFICE_BIN="/Applications/LibreOffice.app/Contents/MacOS/soffice"
-   ```
-
-4. Nếu dùng tính năng sao chép PDF có mật khẩu, tạo môi trường Python riêng cho dự án và cấu hình ứng dụng dùng Python trong môi trường đó:
-
-   ```bash
-   python3 -m venv .venv
-   .venv/bin/python -m pip install -r requirements.txt
-   export PYTHON_BIN="$PWD/.venv/bin/python"
-   ```
-
-5. Build và chạy ứng dụng trong cùng cửa sổ Terminal:
-
-   ```bash
-   npm run build
-   npm start
-   ```
-
-## Sử dụng
-
-1. Khi ứng dụng đã chạy, mở [http://localhost:3000](http://localhost:3000) trong trình duyệt.
-2. Trong menu **PDF**, chọn **Convert** để chuyển Word sang PDF hoặc **Copy protected file** để tạo bản sao PDF có mật khẩu.
-3. Chọn tệp cần xử lý. Có thể nhập đường dẫn thư mục đích trên máy đang chạy ứng dụng hoặc để trống và tải tệp từ trang kết quả.
-
-Giữ cửa sổ PowerShell hoặc Terminal mở khi sử dụng. Nhấn `Ctrl+C` để dừng ứng dụng. Khi chạy lại trong cửa sổ mới, đặt lại các biến môi trường đã cấu hình trước khi chạy lệnh start.
+Trên macOS có thể dùng `python3` thay cho `python`.

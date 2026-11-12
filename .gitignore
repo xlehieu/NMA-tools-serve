@@ -3,10 +3,12 @@ node_modules/
 
 # Production build / Output
 dist/
+backend/dist/
+frontend/.svelte-kit/
+frontend/build/
 build/
 output/
 uploads/
-public/static/style.css
 
 # Environment variables
 .env

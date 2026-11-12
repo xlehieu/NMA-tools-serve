@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { spawn } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
+import { pathToFileURL } from "node:url";
 
 export interface ConvertResult {
   input: string;
@@ -17,7 +18,7 @@ export class ConvertService {
   // Đường dẫn tới soffice/libreoffice. Có thể override bằng biến môi trường SOFFICE_BIN
   private readonly sofficeBin =
     process.env.SOFFICE_BIN ||
-    "C:\\Program Files\\LibreOffice\\program\\soffice.exe";
+    (process.platform === "win32" ? "C:\\Program Files\\LibreOffice\\program\\soffice.exe" : "soffice");
   /**
    * Convert một mảng file .docx sang .pdf.
    * @param filePaths mảng đường dẫn tuyệt đối/tương đối tới các file .docx
@@ -28,6 +29,7 @@ export class ConvertService {
     filePaths: string[],
     outputDir: string,
     timeoutMs = 10 * 60 * 1000,
+    profileDir?: string,
   ): Promise<ConvertResult[]> {
     if (!filePaths || filePaths.length === 0) {
       return [];
@@ -67,7 +69,7 @@ export class ConvertService {
     fs.mkdirSync(outputDir, { recursive: true });
 
     // Gọi một lần soffice cho toàn bộ batch (nhanh hơn, tránh lock profile khi chạy song song nhiều tiến trình)
-    await this.runSofficeConvert(validFiles, outputDir, timeoutMs);
+    await this.runSofficeConvert(validFiles, outputDir, timeoutMs, profileDir);
 
     // Kiểm tra kết quả từng file
     const results: ConvertResult[] = validFiles.map((f) => {
@@ -91,9 +93,11 @@ export class ConvertService {
     files: string[],
     outputDir: string,
     timeoutMs: number,
+    profileDir?: string,
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const args = [
+        ...(profileDir ? [`-env:UserInstallation=${pathToFileURL(profileDir).href}`] : []),
         "--headless",
         "--norestore",
         "--convert-to",
